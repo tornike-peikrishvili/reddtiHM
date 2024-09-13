@@ -8,9 +8,9 @@ namespace Reddit.Controllers
     [ApiController]
     public class PostsController : ControllerBase
     {
-        [HttpGet]
+/*        [HttpGet]
         public List<Post> GetPosts() {
         
-        }
+        }*/
     }
 }
