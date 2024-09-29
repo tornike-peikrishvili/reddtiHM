@@ -76,7 +76,6 @@ namespace Reddit
             });
 
 
-
             base.OnModelCreating(modelBuilder);
         }
 
