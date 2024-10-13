@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reddit.Dtos;
 using Reddit.Models;
+using Reddit.Repositories;
 using System.Linq.Expressions;
 
 namespace Reddit.Controllers
@@ -11,39 +12,22 @@ namespace Reddit.Controllers
     public class Posts1Controller : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IPostsRepository _postsRepository;
 
-        public Posts1Controller(ApplicationDbContext context)
+        public Posts1Controller(ApplicationDbContext context, IPostsRepository postsRepository)
         {
             _context = context;
+            _postsRepository = postsRepository;
         }
 
         // GET: api/Posts1
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Post>>> GetPosts(
+        public async Task<PagedList<Post>> GetPosts(
             string? searchTerm = null,
             int pageSize=3, int pageNumber = 1,
             string? sortTerm = null, bool isAscending = true)
         {
-            var posts = _context.Posts.AsQueryable();
-            // Validate 
-            // Filtration
-            if (searchTerm != null)
-            {
-                posts = posts.Where(p => p.Title.Contains(searchTerm) || p.Content.Contains(searchTerm));
-            }
-
-            // Sort
-            if (isAscending)
-            {
-                posts = posts.OrderBy(GetSortExpression(sortTerm));
-            }
-            else {
-                posts = posts.OrderByDescending(GetSortExpression(sortTerm)); 
-            }
-
-            return await posts
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize).ToListAsync(); 
+            return await _postsRepository.GetPosts(pageNumber, pageSize, searchTerm, sortTerm, isAscending);
         }
 
 [HttpPost("Upvote")]
@@ -75,15 +59,7 @@ public async Task<IActionResult> UpvoteAsync(int postId)
         }
 
 
-        private Expression<Func<Post, object>> GetSortExpression(string? sortTerm) {
-            sortTerm = sortTerm?.ToLower();
-            return sortTerm switch
-                        {
-                         "positivity" => post => (post.Upvote) / (post.Upvote + post.Downvote),
-                          "popular" => post => post.Upvote + post.Downvote,
-                            _ => post => post.Id
-                        };
-        }
+    
 
         // GET: api/Posts1/5
         [HttpGet("{id}")]
