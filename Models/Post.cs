@@ -15,5 +15,7 @@ namespace Reddit.Models
         public virtual List<Comment> Comments { get; set; } = new List<Comment>();
         public virtual User Author { get; set; }
         public int AuthorId { get; set; }
+        public int Upvote { get; set; }
+        public int Downvote { get; set; }
     }
 }

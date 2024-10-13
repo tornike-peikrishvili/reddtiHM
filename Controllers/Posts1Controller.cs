@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reddit.Dtos;
 using Reddit.Models;
+using System.Linq.Expressions;
 
 namespace Reddit.Controllers
 {
@@ -18,9 +19,70 @@ namespace Reddit.Controllers
 
         // GET: api/Posts1
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Post>>> GetPosts()
+        public async Task<ActionResult<IEnumerable<Post>>> GetPosts(
+            string? searchTerm = null,
+            int pageSize=3, int pageNumber = 1,
+            string? sortTerm = null, bool isAscending = true)
         {
-            return await _context.Posts.ToListAsync(); // .Include(p => p.Comments)
+            var posts = _context.Posts.AsQueryable();
+            // Validate 
+            // Filtration
+            if (searchTerm != null)
+            {
+                posts = posts.Where(p => p.Title.Contains(searchTerm) || p.Content.Contains(searchTerm));
+            }
+
+            // Sort
+            if (isAscending)
+            {
+                posts = posts.OrderBy(GetSortExpression(sortTerm));
+            }
+            else {
+                posts = posts.OrderByDescending(GetSortExpression(sortTerm)); 
+            }
+
+            return await posts
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize).ToListAsync(); 
+        }
+
+[HttpPost("Upvote")]
+public async Task<IActionResult> UpvoteAsync(int postId)
+{
+        var post = await _context.Posts.FindAsync(postId);
+        
+        if (post == null)
+        {
+            return NotFound(new { message = "Post not found" });
+        }
+        post.Upvote += 1;
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "Upvoted successfully", upvotes = post.Upvote });
+    }
+
+        [HttpPost("Downvote")]
+        public async Task<IActionResult> DownvoteAsync(int postId)
+        {
+            var post = await _context.Posts.FindAsync(postId);
+
+            if (post == null)
+            {
+                return NotFound(new { message = "Post not found" });
+            }
+            post.Downvote += 1;
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Downvoted successfully", downvotes = post.Downvote });
+        }
+
+
+        private Expression<Func<Post, object>> GetSortExpression(string? sortTerm) {
+            sortTerm = sortTerm?.ToLower();
+            return sortTerm switch
+                        {
+                         "positivity" => post => (post.Upvote) / (post.Upvote + post.Downvote),
+                          "popular" => post => post.Upvote + post.Downvote,
+                            _ => post => post.Id
+                        };
         }
 
         // GET: api/Posts1/5
