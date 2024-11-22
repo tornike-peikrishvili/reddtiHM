@@ -13,5 +13,9 @@ namespace Reddit.Models
 
         public virtual List<Post> Posts { get; set; } = new();
         public virtual List<User> Subscribers { get; set; } = new();
+
+        public int PostsCount => Posts?.Count ?? 0;
+        public int SubscribersCount => Subscribers?.Count ?? 0;
+
     }
 }

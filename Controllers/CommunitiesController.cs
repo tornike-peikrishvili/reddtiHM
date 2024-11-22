@@ -24,9 +24,44 @@ namespace Reddit.Controllers
 
         // GET: api/Communities
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Community>>> GetCommunities()
+        public async Task<IActionResult> GetCommunities(
+            int pageNumber = 1,
+            int pageSize = 10,
+            string? sortKey = null,
+            bool isAscending = true,
+            string? searchKey = null)
         {
-            return await _context.Communities.ToListAsync();
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var query = _context.Communities.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchKey))
+            {
+                query = query.Where(c => c.Name.Contains(searchKey) || c.Description.Contains(searchKey));
+            }
+
+            query = sortKey?.ToLower() switch
+            {
+                "createdat" => isAscending ? query.OrderBy(c => c.CreatedAt) : query.OrderByDescending(c => c.CreatedAt),
+                "postscount" => isAscending ? query.OrderBy(c => c.Posts.Count()) : query.OrderByDescending(c => c.Posts.Count()),
+                "subscriberscount" => isAscending ? query.OrderBy(c => c.Subscribers.Count()) : query.OrderByDescending(c => c.Subscribers.Count()),
+                _ => isAscending ? query.OrderBy(c => c.Id) : query.OrderByDescending(c => c.Id),
+            };
+
+            var totalRecords = await query.CountAsync();
+            var communities = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                TotalRecords = totalRecords,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                Data = communities
+            });
         }
 
         // GET: api/Communities/5
